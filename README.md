@@ -74,7 +74,7 @@ in comparisons.  But creating new coins is not a feature that BitShares will hav
 
 However, BitShares still has a minting reward.  By "mining/minting reward," I mean the coins given to a node by the network when
 it mines/mints a block.  In most cryptocurrencies, this reward comes from a combination of transaction fees and newly minted
-coins.  In BitShares X, the minting reward comes solely from newly minted coins.  So even though I talk about "minting reward," I'm
+coins.  In BitShares X, the minting reward comes solely from transaction fees.  So even though I talk about "minting reward," I'm
 not implying BitShares will ever create new coins!
 
 Pools (F9)
