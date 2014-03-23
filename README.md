@@ -266,10 +266,13 @@ global boost factor to compensate.
 This is implemented by simply multiplying the difficulty target by R.  Compensating for adjustments due
 to rate fluctuation will be efficiently carried out by the minting algorithm.
 
+I will show that f(age) should be constant to avoid what I call the "incentive trap."
+
 Specific boost curve (F1, F5)
 -----------------------------
 
-I've sketched out qualitatively what I think would make a good boost curve.  (The drawing is not to scale.)
+Before I found the next sections' argument that the boost function should be constant, I sketched out qualitatively
+what I think would make a good non-constant boost curve.  (The drawing is not to scale.)
 From t0 to t1, 134 blocks, shift_reg is not yet full, so minting cannot take place.  From t1 to t2, about
 30 days, minting rate increases.  Starting from zero with zero slope means balances that have moved
 recently are still heavily penalized, but the penalty gradually dissipates.  Once at t2, the slope starts
@@ -284,10 +287,93 @@ Finding a good approximation of this curve is left as an exercise to the reader 
 try piecewise cubic polynomials).  The curve should have a simple implementation using purely integer
 arithmetic.
 
+Increasing boost function justification
+---------------------------------------
+
+Peercoin uses an increasing boost function.  What are the motivations for choosing an increasing
+boost function?
+
+Including an increasing boost function seems to be designed accomplish two objectives:  (1) Rate-limit
+large balance holders, and (2) disenfranchise non-stationary balances.  Objective (1) seems like a
+lost cause; any attempt to penalize large balance holders will simply encourage them to split up
+their balances, i.e. become sybils.
+
+Objective (2) assumes that ancient, stationary balances are more important to the network than recent,
+active balances.  Upon reflection it is not entirely clear that this is the case.  Much of the value
+of a cryptocurrency is due to the presence of a liquid market.  Balances that participate in exchanges
+of value are a fundamental feature of any monetary system.  Is it really fair to penalize them?
+
+Also, the fact that boost function resets when an output is spent means that there's no way for a large
+balance to cash out a small sum for an immediate need without resetting its point on the boost curve.
+Thus, an increasing boost function incentivizes large balance holders to split up their balances in
+order to gain the capability to make small transactions without resetting the boost function for
+their entire wealth.
+
+To summarize:  The motivations from an increasing boost function are questionable.
+
+The incentive trap
+------------------
+
+Excessive centralization or decentralization is bad.  Centralization provides a single point of failure
+and creates dangerous fiduciary relationships; decentralization is wasteful of valuable blockchain storage
+and network bandwidth.  Neither should be incentivized.  In this section, I will show that a non-constant
+boost function must incentivize one or the other.
+
+First of all, a decreasing boost function is pointless.  A profit-maximizing minter confronted with a decreasing
+boost function would simply reset the boost curve by sending a transaction to himself as soon as the losses from
+decreased minting capability exceed the transaction fee for resetting.  A very steeply decreasing boost function
+would incentivize centralization to minimize the impact of the fee and allow resetting as soon as possible.
+
+It may be possible to have a boost curve which decreases by limited amounts in only some regions, but I believe
+that, in order to avoid having an incentive to reset early, such a boost curve would need to have regions where
+the incentive trap will occur (I'll define an incentive trap in a moment).
+
+Now consider an increasing boost function.  If you have C coins in a single output, your rate is:
+
+    R_1 = C * f(age)
+
+Now suppose you split this balance up into two smaller balances of a, b coins, such that a+b = C.  Your rate is now:
+
+    R_2 = a * f(age) + b * f(age) = C * f(age)
+
+Since R_2 = R_1, you do not get any immediate advantage of increased rate.  However, when minting occurs and the boost
+function resets, whichever of your two balances *did not* mint does not reset its boost curve.  The reset penalty can
+be made arbitrarily small by splitting up into small balances.
+
+Peercoin solves this problem by making minting reward proportional to the mintstake.  Unfortunately, this solution
+incentivizes centralization.  If minting rate and minting reward are both proportional to
+the mintstake, then the expected return of minting is proportional to the square of the
+balance -- so small balances have an incentive to combine.  If minting rate is not proportional
+to mintstake, then a sybil can completely take over minting.  If minting reward is not proportional
+to mintstake, sybils have the advantage of most of their balances not resetting their boost
+when they mint.
+
+I refer to the previous paragraph's catch-22 as "the incentive trap:"  An increasing boost function
+results in either a centralizing incentive (if rate and reward are both proportional to mintstake)
+or a decentralizing incentive (if rate or reward is not proporitonal to mintstake).
+
+The solution to the incentive trap should be obvious:  Avoid it by avoiding increasing boost functions!
+Since decreasing boost functions don't work either, the only solution is a constant boost function.
+Resetting doesn't matter with a constant boost function.  Minting rate is proportional to balance
+(as desired) and minting reward is constant.  Sybils no longer have any advantage or disadvantage.
+
+Note, we still need to disable minting for 134 blocks while shiftreg fills to avoid the stream
+selection attack.  So the boost function will have a 134-block "hole" and actually be increasing,
+not constant.  Sybils will still have a small advantage in that they avoid the hole.  In practice,
+the hole in minting capability should only matter for really large balances that make change really
+often; everyone else will probably just accept it as just another transaction fee.
+
+The hole may actually have the beneficial effect of incentivizing good behavior from market
+participants that need to make change from really large balances really often.  For example,
+they might fund or otherwise support development of useful client features (e.g. coin control)
+that help them effectively minimize their losses to the minting hole.  Or they might keep their
+large balance in a separate wallet instance, and only keep a smaller one for frequent transactions;
+this practice may improve their security.
+
 Rewards (F2, F7, F8)
 --------------------
 
-So far, I've only talked about the rate of producing blocks.  How do block rewards happen?
+So far, I've mostly talked about the rate of producing blocks.  How do block rewards happen?
 
 Since coins are never created (F2), the only possible source for block rewards are transaction
 fees.  I think that exactly what fees exist, and how much they will be, is something that is
